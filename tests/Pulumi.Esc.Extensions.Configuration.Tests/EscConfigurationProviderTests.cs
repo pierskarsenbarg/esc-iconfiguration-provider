@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Pulumi.Esc.Sdk.Model;
 
@@ -180,6 +181,90 @@ public class EscConfigurationProviderTests
         Assert.Equal("value", lower);
         Assert.True(provider.TryGet("APIKEY", out var upper));
         Assert.Equal("value", upper);
+    }
+}
+
+public class EscConfigurationReloaderTests
+{
+    private static EscConfigurationOptions DefaultOptions => new()
+    {
+        Organization = "test-org",
+        Project = "test-project",
+        Environment = "test-env"
+    };
+
+    [Fact]
+    public async Task ReloadAsync_UpdatesData()
+    {
+        var client = new Mock<IEscClient>();
+        client
+            .Setup(c => c.OpenEnvironmentAsync("test-org", "test-project", "test-env", default))
+            .ReturnsAsync(("session-1", null));
+        client
+            .SetupSequence(c => c.ReadOpenEnvironmentAsync("test-org", "test-project", "test-env", "session-1", default))
+            .ReturnsAsync((new ModelEnvironment(), new Dictionary<string, object?> { ["key"] = "initial" }))
+            .ReturnsAsync((new ModelEnvironment(), new Dictionary<string, object?> { ["key"] = "updated" }));
+
+        var provider = new EscConfigurationProvider(DefaultOptions, client.Object);
+        provider.Load();
+
+        Assert.True(provider.TryGet("key", out var before));
+        Assert.Equal("initial", before);
+
+        await provider.ReloadAsync();
+
+        Assert.True(provider.TryGet("key", out var after));
+        Assert.Equal("updated", after);
+    }
+
+    [Fact]
+    public async Task ReloadAsync_FiresChangeToken()
+    {
+        var client = new Mock<IEscClient>();
+        client
+            .Setup(c => c.OpenEnvironmentAsync("test-org", "test-project", "test-env", default))
+            .ReturnsAsync(("session-1", null));
+        client
+            .Setup(c => c.ReadOpenEnvironmentAsync("test-org", "test-project", "test-env", "session-1", default))
+            .ReturnsAsync((new ModelEnvironment(), new Dictionary<string, object?> { ["key"] = "value" }));
+
+        var provider = new EscConfigurationProvider(DefaultOptions, client.Object);
+        provider.Load();
+
+        var token = provider.GetReloadToken();
+        var callbackFired = false;
+        token.RegisterChangeCallback(_ => callbackFired = true, null);
+
+        await provider.ReloadAsync();
+
+        Assert.True(callbackFired);
+    }
+}
+
+public class EscServiceCollectionExtensionsTests
+{
+    [Fact]
+    public void AddEscConfigurationReloader_RegistersProviderAsSingleton()
+    {
+        var client = new Mock<IEscClient>();
+        var options = new EscConfigurationOptions
+        {
+            Organization = "org",
+            Project = "proj",
+            Environment = "env"
+        };
+        var provider = new EscConfigurationProvider(options, client.Object);
+
+        var mockRoot = new Mock<IConfigurationRoot>();
+        mockRoot.Setup(r => r.Providers).Returns(new IConfigurationProvider[] { provider });
+
+        var services = new ServiceCollection();
+        services.AddEscConfigurationReloader(mockRoot.Object);
+        var sp = services.BuildServiceProvider();
+
+        var reloader = sp.GetService<IEscConfigurationReloader>();
+        Assert.NotNull(reloader);
+        Assert.Same(provider, reloader);
     }
 }
 

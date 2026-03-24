@@ -7,6 +7,8 @@ public class EscConfigurationSource : IConfigurationSource
 {
     private readonly EscConfigurationOptions _options;
 
+    public IEscConfigurationReloader? Reloader { get; private set; }
+
     public EscConfigurationSource(EscConfigurationOptions options)
     {
         _options = options;
@@ -17,6 +19,8 @@ public class EscConfigurationSource : IConfigurationSource
         var escClient = _options.AccessToken is not null
             ? EscClient.Create(_options.AccessToken)
             : EscClient.CreateDefault();
-        return new EscConfigurationProvider(_options, new EscClientAdapter(escClient));
+        var provider = new EscConfigurationProvider(_options, new EscClientAdapter(escClient));
+        Reloader = provider;
+        return provider;
     }
 }

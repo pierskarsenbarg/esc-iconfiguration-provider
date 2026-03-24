@@ -2,7 +2,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace Pulumi.Esc.Extensions.Configuration;
 
-public class EscConfigurationProvider : ConfigurationProvider, IDisposable
+public class EscConfigurationProvider : ConfigurationProvider, IEscConfigurationReloader, IDisposable
 {
     private readonly EscConfigurationOptions _options;
     private readonly IEscClient _client;
@@ -15,13 +15,19 @@ public class EscConfigurationProvider : ConfigurationProvider, IDisposable
 
     public override void Load() => LoadAsync().GetAwaiter().GetResult();
 
-    private async Task LoadAsync()
+    public async Task ReloadAsync(CancellationToken cancellationToken = default)
+    {
+        await LoadAsync(cancellationToken);
+        OnReload();
+    }
+
+    private async Task LoadAsync(CancellationToken cancellationToken = default)
     {
         var (sessionId, _) = await _client.OpenEnvironmentAsync(
-            _options.Organization, _options.Project, _options.Environment);
+            _options.Organization, _options.Project, _options.Environment, cancellationToken);
 
         var (_, values) = await _client.ReadOpenEnvironmentAsync(
-            _options.Organization, _options.Project, _options.Environment, sessionId);
+            _options.Organization, _options.Project, _options.Environment, sessionId, cancellationToken);
 
         var data = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         if (values is not null)
