@@ -1,0 +1,29 @@
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: "Europe/London"
+    assignees:
+      - pierskarsenbarg
+    groups:
+      pulumi-esc:
+        patterns:
+          - "Pulumi.Esc*"
+      nuget-dependencies:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "Pulumi.Esc*"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+      time: "05:00"
+      timezone: "Europe/London"
+    assignees:
+      - pierskarsenbarg
