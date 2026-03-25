@@ -161,6 +161,27 @@ public class EscConfigurationProviderTests
     }
 
     [Fact]
+    public void Load_KeyWithColonInName_ReturnsValue()
+    {
+        var client = new Mock<IEscClient>();
+        client
+            .Setup(c => c.OpenEnvironmentAsync("test-org", "test-project", "test-env", default))
+            .ReturnsAsync(("session-1", null));
+        client
+            .Setup(c => c.ReadOpenEnvironmentAsync("test-org", "test-project", "test-env", "session-1", default))
+            .ReturnsAsync((new ModelEnvironment(), new Dictionary<string, object?>
+            {
+                ["aws:region"] = "eu-west-1"
+            }));
+
+        var provider = BuildProvider(client.Object);
+        provider.Load();
+
+        Assert.True(provider.TryGet("aws:region", out var region));
+        Assert.Equal("eu-west-1", region);
+    }
+
+    [Fact]
     public void Load_KeysAreCaseInsensitive()
     {
         var client = new Mock<IEscClient>();
