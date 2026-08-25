@@ -10,7 +10,7 @@
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.11" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
-    <PackageReference Include="Pulumi.Esc.Sdk" Version="0.13.1" />
+    <PackageReference Include="Pulumi.Esc.Sdk" Version="0.14.0" />
   </ItemGroup>
 
 </Project>
